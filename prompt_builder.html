@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claude 提示词生成器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="max-w-6xl mx-auto p-4">
+        <!-- Header -->
+        <header class="text-center py-6">
+            <h1 class="text-3xl font-bold text-gray-800">Claude 提示词生成器</h1>
+            <p class="text-gray-500 mt-2">选择场景和模板，填写参数，一键生成高质量的 Claude 提示词</p>
+        </header>
+
+        <!-- Actions -->
+        <div class="flex justify-between items-center mb-4">
+            <button onclick="randomTemplate()" class="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition text-sm">
+                <i class="fa fa-random"></i> 随机模板
+            </button>
+            <span id="status" class="text-sm text-gray-400"></span>
+        </div>
+
+        <!-- Main Layout: Left + Right -->
+        <div class="grid md:grid-cols-5 gap-4">
+            <!-- Left Panel (3 columns) -->
+            <div class="md:col-span-3 space-y-4">
+                <!-- Category Selector -->
+                <div class="bg-white p-4 rounded-lg shadow-sm border">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fa fa-folder-o text-blue-500"></i> 选择场景分类
+                    </label>
+                    <div id="categories" class="flex gap-2 flex-wrap"></div>
+                </div>
+
+                <!-- Template Selector -->
+                <div class="bg-white p-4 rounded-lg shadow-sm border">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fa fa-file-text-o text-green-500"></i> 选择模板
+                    </label>
+                    <div id="templates" class="flex gap-2 flex-wrap"></div>
+                </div>
+
+                <!-- Sub-template Selector -->
+                <div class="bg-white p-4 rounded-lg shadow-sm border" id="variantSection" style="display:none;">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fa fa-caret-square-o-down text-yellow-500"></i> 选择具体场景
+                    </label>
+                    <div id="variants" class="flex gap-2 flex-wrap"></div>
+                </div>
+
+                <!-- Variable Input Fields -->
+                <div id="fieldsSection" class="bg-white p-4 rounded-lg shadow-sm border" style="display:none;">
+                    <label class="block text-sm font-medium text-gray-700 mb-3">
+                        <i class="fa fa-sliders text-orange-500"></i> 填写参数
+                    </label>
+                    <div id="fields" class="space-y-3"></div>
+                    <button onclick="generate()" class="mt-4 w-full bg-blue-500 text-white py-2.5 rounded-lg font-bold hover:bg-blue-600 transition">
+                        <i class="fa fa-magic"></i> 生成提示词
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right Panel (2 columns) -->
+            <div class="md:col-span-2">
+                <div class="bg-white p-4 rounded-lg shadow-sm border sticky top-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="block text-sm font-medium text-gray-700">
+                            <i class="fa fa-terminal text-indigo-500"></i> 生成的提示词
+                        </label>
+                        <div class="flex gap-2">
+                            <button onclick="copyPrompt()" class="text-sm bg-gray-100 px-3 py-1.5 rounded hover:bg-gray-200 transition" id="copyBtn">
+                                <i class="fa fa-copy"></i> 复制
+                            </button>
+                            <button onclick="saveCurrentToFavorites()" class="text-sm bg-amber-100 px-3 py-1.5 rounded hover:bg-amber-200 transition" title="收藏当前模板配置">
+                                <i class="fa fa-star"></i> 收藏
+                            </button>
+                            <button onclick="clearPrompt()" class="text-sm bg-gray-100 px-3 py-1.5 rounded hover:bg-gray-200 transition">
+                                <i class="fa fa-trash-o"></i> 清空
+                            </button>
+                        </div>
+                    </div>
+                    <pre id="output" class="bg-gray-900 text-gray-100 p-4 rounded-lg text-sm overflow-auto whitespace-pre-wrap font-mono min-h-[400px] max-h-[600px] border select-all">等待生成...</pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer Tips -->
+        <div class="mt-6 p-4 bg-blue-50 rounded-lg">
+            <h3 class="font-bold text-blue-800"><i class="fa fa-lightbulb-o"></i> 使用技巧</h3>
+            <ul class="mt-2 text-sm text-blue-700 space-y-1">
+                <li>先选择场景分类，再选择模板和具体场景</li>
+                <li>红色标记为必填字段，请尽量填写完整</li>
+                <li>点击「随机模板」可快速体验不同场景</li>
+                <li>生成后点击「复制」可直接粘贴到 Claude 中使用</li>
+                <li>点击「收藏」保存常用模板，从收藏列表一键加载</li>
+                <li>模板基于 <strong>Claude 提示词模板库</strong>，覆盖写作、编程、分析、角色扮演四大场景</li>
+            </ul>
+        </div>
+
+        <!-- 收藏模板列表 -->
+        <div class="mt-6 bg-white p-4 rounded-lg shadow-sm border">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="font-bold text-gray-700"><i class="fa fa-star text-amber-500 mr-1"></i> 收藏模板</h3>
+                <button onclick="clearAllFavorites()" class="text-sm text-gray-400 hover:text-red-500"><i class="fa fa-trash-o mr-1"></i>清空</button>
+            </div>
+            <div id="favoritesList" class="space-y-2 min-h-[40px]">
+                <div class="text-gray-400 text-sm text-center py-2">暂无收藏，生成后点击「收藏」保存常用模板</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ============================
+    // 模板数据
+    // ============================
+    const data = {
+        "写作场景": {
+            icon: "fa-pencil-square-o",
+            color: "blue",
+            templates: {
+                "文章写作": {
+                    color: "blue",
+                    variants: ["文章框架生成", "引言生成", "案例描写", "结尾升华"],
+                    fields: [
+                        { key: "theme", label: "文章主题", placeholder: "如：AI对内容创作的影响", required: true },
+                        { key: "audience", label: "目标读者", placeholder: "如：内容创业者、自媒体人", required: true },
+                        { key: "article_type", label: "文章类型", placeholder: "如：教程/观点/案例分析", required: false },
+                        { key: "length", label: "预计长度（字数）", placeholder: "如：2000-3000字", required: false },
+                        { key: "key_points", label: "核心观点/要点", placeholder: "如：AI是工具而非替代者", required: false },
+                        { key: "intro_style", label: "引入方式", placeholder: "如：故事/数据/提问", required: false },
+                        { key: "case_background", label: "案例背景", placeholder: "描述案例背景", required: false },
+                        { key: "conflict", label: "核心冲突", placeholder: "关键问题或矛盾", required: false },
+                        { key: "ending_type", label: "结尾类型", placeholder: "如：总结/呼吁/反思", required: false }
+                    ],
+                    prompts: {
+                        "文章框架生成": "请帮我设计文章框架：\n- 主题：{{theme}}\n- 目标读者：{{audience}}\n- 文章类型：{{article_type}}\n- 预计长度：{{length}}\n\n要求：\n1. 列出章节结构\n2. 每章核心观点\n3. 每章预计字数\n4. 突出核心要点：{{key_points}}",
+                        "引言生成": "请生成文章引言：\n- 主题：{{theme}}\n- 目标读者：{{audience}}\n- 核心观点：{{key_points}}\n- 引入方式：{{intro_style}}\n- 长度：200-500字",
+                        "案例描写": "请扩展以下案例：\n- 案例背景：{{case_background}}\n- 目标读者：{{audience}}\n- 核心冲突：{{conflict}}\n- 解决过程：{{key_points}}\n- 最终结果：{{length}}\n\n要求：\n1. 增加细节描写\n2. 加入对话\n3. 突出转折点",
+                        "结尾升华": "请生成文章结尾：\n- 文章主题：{{theme}}\n- 目标读者：{{audience}}\n- 核心观点：{{key_points}}\n- 结尾类型：{{ending_type}}\n- 预计长度：{{length}}\n\n要求：\n1. 回扣主题\n2. 提供行动建议\n3. 留有余味"
+                    }
+                },
+                "内容策划": {
+                    color: "indigo",
+                    variants: ["选题脑暴", "内容日历规划", "用户痛点调研"],
+                    fields: [
+                        { key: "field", label: "领域/行业", placeholder: "如：职场成长、科技资讯", required: true },
+                        { key: "audience", label: "目标读者/用户画像", placeholder: "如：25-35岁职场人", required: true },
+                        { key: "content_format", label: "内容形式", placeholder: "如：图文/视频/播客", required: false },
+                        { key: "focus", label: "本期重点/核心方向", placeholder: "如：AI工具测评", required: true },
+                        { key: "platform", label: "发布平台", placeholder: "如：公众号/小红书/抖音", required: false },
+                        { key: "frequency", label: "发布频率", placeholder: "如：每日更新/每周3次", required: false },
+                        { key: "hot_topic", label: "热点/专题方向", placeholder: "如：ChatGPT新功能", required: false },
+                        { key: "existing_product", label: "已有产品/服务", placeholder: "如：职场技能课程", required: false }
+                    ],
+                    prompts: {
+                        "选题脑暴": "请帮我做选题脑暴：\n- 领域：{{field}}\n- 目标读者：{{audience}}\n- 内容形式：{{content_format}}\n- 本期重点：{{focus}}\n\n请输出：\n1. 10个选题方向（标题形式）\n2. 每个选题的核心切入点\n3. 预计的读者共鸣点\n4. 难度评级（简单/中等/困难）\n5. 推荐优先级排序",
+                        "内容日历规划": "请帮我规划内容日历：\n- 领域：{{field}}\n- 目标读者：{{audience}}\n- 发布频率：{{frequency}}\n- 平台：{{platform}}\n- 下期重点：{{hot_topic}}\n\n要求：\n1. 一周7天内容安排\n2. 每天一个主要主题\n3. 含1-2个热点/时效性选题\n4. 含互动/粉丝参与内容",
+                        "用户痛点调研": "请帮我分析用户痛点：\n- 目标用户：{{audience}}\n- 所属领域：{{field}}\n- 已有产品/服务：{{existing_product}}\n\n请分析：\n1. 目标用户的TOP10痛点\n2. 每个痛点的紧急程度（高/中/低）\n3. 每个痛点的普遍性（高/中/低）\n4. 针对每个痛点的内容切入点\n5. 竞品在这些痛点上的覆盖情况"
+                    }
+                },
+                "翻译润色": {
+                    color: "teal",
+                    variants: ["技术文档翻译", "文案润色", "标题优化"],
+                    fields: [
+                        { key: "source_text", label: "原文内容", placeholder: "粘贴需要翻译/润色的文本", required: true },
+                        { key: "target_language", label: "目标语言", placeholder: "如：中文/英文/日文", required: false },
+                        { key: "style", label: "目标风格", placeholder: "如：简洁/生动/专业/正式", required: true },
+                        { key: "audience", label: "目标读者", placeholder: "如：普通读者/专业人士", required: false },
+                        { key: "platform2", label: "发布平台", placeholder: "如：公众号/知乎/小红书", required: false },
+                        { key: "optimization_direction", label: "优化方向", placeholder: "如：更吸引/更专业/更简洁", required: false },
+                        { key: "glossary", label: "是否需要术语对照", placeholder: "是/否", required: false }
+                    ],
+                    prompts: {
+                        "技术文档翻译": "请翻译以下技术文档：\n- 原文：{{source_text}}\n- 目标语言：{{target_language}}\n- 术语表：{{glossary}}\n\n要求：\n1. 保持专业术语准确\n2. 符合目标语言表达习惯\n3. 保留代码块不变\n4. 风格：{{style}}",
+                        "文案润色": "请润色以下文案：\n- 原文案：{{source_text}}\n- 目标风格：{{style}}\n- 目标读者：{{audience}}\n\n要求：\n1. 提升表达流畅度\n2. 增强感染力\n3. 保持原意不变",
+                        "标题优化": "请优化以下标题：\n- 原标题：{{source_text}}\n- 优化方向：{{optimization_direction}}\n- 平台：{{platform2}}\n\n要求：\n1. 提供3个优化版本\n2. 解释每个版本的优化思路"
+                    }
+                },
+                "文案创意": {
+                    color: "pink",
+                    variants: ["营销文案生成", "社交媒体文案", "品牌故事脚本"],
+                    fields: [
+                        { key: "product", label: "产品/服务名称", placeholder: "如：XX在线写作工具", required: true },
+                        { key: "audience", label: "目标用户画像", placeholder: "如：内容创作者、自媒体人", required: true },
+                        { key: "selling_points", label: "核心卖点（1-3个）", placeholder: "如：AI辅助写作、一键排版", required: true },
+                        { key: "channel", label: "营销渠道", placeholder: "如：公众号/小红书/抖音", required: false },
+                        { key: "style", label: "文案风格", placeholder: "如：走心/硬核/幽默", required: false },
+                        { key: "CTA", label: "行动号召", placeholder: "如：点击/购买/关注/收藏", required: false },
+                        { key: "platform2", label: "发布平台", placeholder: "如：小红书/抖音/微博/知乎", required: false },
+                        { key: "goal", label: "文案目标", placeholder: "如：涨粉/互动/转化/品牌曝光", required: true },
+                        { key: "brand_name", label: "品牌名称", placeholder: "品牌名", required: false },
+                        { key: "founding_time", label: "创立时间", placeholder: "如：2023年", required: false },
+                        { key: "core_values", label: "核心价值/价值观", placeholder: "如：高效、创新", required: false }
+                    ],
+                    prompts: {
+                        "营销文案生成": "请生成营销文案：\n- 产品/服务：{{product}}\n- 目标用户：{{audience}}\n- 核心卖点：{{selling_points}}\n- 营销渠道：{{channel}}\n- 文案风格：{{style}}\n- 行动号召：{{CTA}}\n\n输出要求：\n1. 一个吸引眼球的标题（3个备选）\n2. 开篇钩子（50字内）\n3. 正文结构（300-500字）\n4. 行动号召文案\n5. 备选配图建议",
+                        "社交媒体文案": "请生成社交媒体文案：\n- 内容主题：{{product}}\n- 发布平台：{{platform2}}\n- 目标：{{goal}}\n- 目标用户：{{audience}}\n\n要求：\n1. 适配平台调性\n2. 含话题标签建议\n3. 含互动引导问题\n4. 字数符合平台最佳实践\n5. 提供3个不同角度版本",
+                        "品牌故事脚本": "请帮我写一个品牌故事：\n- 品牌名：{{brand_name}}\n- 创立时间：{{founding_time}}\n- 核心价值：{{core_values}}\n- 目标用户：{{audience}}\n- 核心卖点：{{selling_points}}\n\n故事结构：\n1. 创始人为什么要做这件事\n2. 遇到了什么困难\n3. 如何坚持下来的\n4. 现在的样子\n5. 未来的愿景\n\n请用讲故事的方式而不是罗列事实。"
+                    }
+                }
+            }
+        },
+        "编程场景": {
+            icon: "fa-code",
+            color: "green",
+            templates: {
+                "代码生成": {
+                    color: "emerald",
+                    variants: ["快速生成函数", "API 接口生成", "类与接口定义", "错误处理模板"],
+                    fields: [
+                        { key: "language", label: "编程语言", placeholder: "如：TypeScript/Python/Go", required: true },
+                        { key: "task", label: "功能描述", placeholder: "详细描述需要实现的功能", required: true },
+                        { key: "constraints", label: "约束条件", placeholder: "如：安全/性能/兼容性要求", required: false },
+                        { key: "examples", label: "输入输出示例", placeholder: "如：输入xxx返回xxx", required: false },
+                        { key: "function_name", label: "函数名", placeholder: "如：validateEmail", required: false },
+                        { key: "params", label: "参数列表", placeholder: "如：email: string", required: false },
+                        { key: "return_type", label: "返回值类型", placeholder: "如：boolean/Promise<User>", required: false },
+                        { key: "api_path", label: "API 路径", placeholder: "如：/api/users", required: false },
+                        { key: "api_method", label: "HTTP 方法", placeholder: "如：GET/POST/PUT/DELETE", required: false },
+                        { key: "auth", label: "认证方式", placeholder: "如：JWT/OAuth/API Key", required: false }
+                    ],
+                    prompts: {
+                        "快速生成函数": "请生成一个函数，功能如下：\n- 函数名：{{function_name}}\n- 输入参数：{{params}}\n- 返回值类型：{{return_type}}\n- 功能描述：{{task}}\n- 编程语言：{{language}}\n\n要求：\n1. 添加类型注释\n2. 包含参数校验\n3. 添加单元测试示例\n4. 约束条件：{{constraints}}",
+                        "API 接口生成": "请生成 REST API 接口：\n- 路径：{{api_path}}\n- 方法：{{api_method}}\n- 功能：{{task}}\n- 认证方式：{{auth}}\n- 编程语言：{{language}}\n\n返回格式：\n1. 成功响应示例\n2. 错误响应示例\n3. 参数说明\n4. 包含输入输出：{{examples}}",
+                        "类与接口定义": "请定义一个类：\n- 类名：{{function_name}}\n- 属性：{{params}}\n- 方法：{{task}}\n- 继承：{{constraints}}\n- 编程语言：{{language}}\n\n要求：\n1. 使用 TypeScript\n2. 添加访问修饰符\n3. 实现必要的生命周期方法\n4. 提供使用示例：{{examples}}",
+                        "错误处理模板": "请为以下代码添加错误处理：\n- 编程语言：{{language}}\n- 功能描述：{{task}}\n- 可能的错误：{{constraints}}\n- 输入输出示例：{{examples}}\n\n要求：\n1. 使用 try-catch\n2. 添加错误日志\n3. 返回友好的错误消息"
+                    }
+                },
+                "代码调试": {
+                    color: "yellow",
+                    variants: ["Bug 定位", "错误日志分析", "性能问题排查", "单元测试生成"],
+                    fields: [
+                        { key: "code", label: "相关代码", placeholder: "粘贴需要调试的代码", required: true },
+                        { key: "problem", label: "问题描述", placeholder: "描述 Bug 现象", required: true },
+                        { key: "expected", label: "期望行为", placeholder: "应该发生什么", required: false },
+                        { key: "actual", label: "实际行为", placeholder: "实际发生什么", required: false },
+                        { key: "environment", label: "运行环境", placeholder: "如：Node 18 / Chrome 120", required: false },
+                        { key: "log", label: "错误日志", placeholder: "粘贴错误日志", required: false },
+                        { key: "time_cost", label: "耗时/时间窗口", placeholder: "如：500ms / 2024-01", required: false },
+                        { key: "data_scale", label: "数据规模", placeholder: "如：10万行 / 2GB", required: false },
+                        { key: "test_framework", label: "测试框架", placeholder: "如：Jest/Vitest/Mocha", required: false },
+                        { key: "coverage", label: "测试覆盖", placeholder: "如：正常/异常/边界", required: false }
+                    ],
+                    prompts: {
+                        "Bug 定位": "请帮我定位以下 Bug：\n- 问题描述：{{problem}}\n- 期望行为：{{expected}}\n- 实际行为：{{actual}}\n- 相关代码：{{code}}\n\n分析步骤：\n1. 列出可能的原因\n2. 标记可疑代码行\n3. 提出排查建议\n4. 运行环境：{{environment}}",
+                        "错误日志分析": "请分析以下错误日志：\n- 日志内容：{{log}}\n- 环境：{{environment}}\n- 时间：{{time_cost}}\n- 相关代码：{{code}}\n\n要求：\n1. 解读错误类型\n2. 定位问题代码\n3. 提出修复方案",
+                        "性能问题排查": "请分析性能问题：\n- 问题现象：{{problem}}\n- 运行时间：{{time_cost}}\n- 数据规模：{{data_scale}}\n- 相关代码：{{code}}\n\n要求：\n1. 定位性能瓶颈\n2. 分析时间复杂度\n3. 提出优化方案",
+                        "单元测试生成": "请为以下函数生成单元测试：\n- 函数代码：{{code}}\n- 测试框架：{{test_framework}}\n- 测试覆盖：{{coverage}}\n- 功能描述：{{problem}}\n\n要求：\n1. 测试所有参数组合\n2. 包含边界值测试\n3. 测试异常情况"
+                    }
+                },
+                "代码重构": {
+                    color: "orange",
+                    variants: ["代码重构", "代码审查", "架构设计评审"],
+                    fields: [
+                        { key: "code", label: "原代码", placeholder: "粘贴需要重构/审查的代码", required: true },
+                        { key: "language", label: "编程语言", placeholder: "如：TypeScript/Python/Go", required: true },
+                        { key: "goal", label: "重构目标/审查重点", placeholder: "如：可读性/性能/可维护性/安全性", required: true },
+                        { key: "core_issue", label: "核心问题描述", placeholder: "描述具体问题", required: false },
+                        { key: "function_desc", label: "功能说明", placeholder: "这段代码的功能是什么", required: false },
+                        { key: "system_goal", label: "系统目标", placeholder: "系统整体目标描述", required: false },
+                        { key: "modules", label: "核心模块列表", placeholder: "如：用户模块、订单模块", required: false },
+                        { key: "data_flow", label: "数据流描述", placeholder: "描述数据流向", required: false },
+                        { key: "tech_stack", label: "技术栈", placeholder: "如：React + Node.js + PostgreSQL", required: false }
+                    ],
+                    prompts: {
+                        "代码重构": "请帮我重构以下代码：\n- 原代码：{{code}}\n- 重构目标：{{goal}}\n- 编程语言：{{language}}\n- 核心问题：{{core_issue}}\n\n要求：\n1. 指出原代码的问题\n2. 提供重构后的代码\n3. 解释重构思路和收益\n4. 保持功能完全一致",
+                        "代码审查": "请审查以下代码：\n- 功能描述：{{function_desc}}\n- 语言：{{language}}\n- 代码：{{code}}\n- 审查重点：{{goal}}\n\n审查维度：\n1. 逻辑正确性\n2. 边界情况处理\n3. 性能问题\n4. 安全漏洞\n5. 代码可读性\n6. 测试覆盖\n\n请给每个维度打分（1-5分）并给出改进建议。",
+                        "架构设计评审": "请评审以下系统架构设计：\n- 系统目标：{{system_goal}}\n- 核心模块：{{modules}}\n- 数据流：{{data_flow}}\n- 技术栈：{{tech_stack}}\n- 编程语言：{{language}}\n\n评审要求：\n1. 评估架构的扩展性\n2. 识别潜在的单点故障\n3. 分析模块划分的合理性\n4. 提出优化建议"
+                    }
+                },
+                "技术文档生成": {
+                    color: "cyan",
+                    variants: ["API 文档生成", "SQL 优化", "命令行工具设计"],
+                    fields: [
+                        { key: "code", label: "代码/SQL", placeholder: "粘贴代码或SQL", required: true },
+                        { key: "language", label: "编程语言", placeholder: "如：TypeScript/Python/SQL", required: true },
+                        { key: "doc_style", label: "文档风格", placeholder: "如：简洁/详细/标准", required: false },
+                        { key: "reader", label: "目标读者", placeholder: "如：前端开发者/第三方开发者", required: false },
+                        { key: "data_scale", label: "数据规模", placeholder: "如：约100万行", required: false },
+                        { key: "time_cost", label: "当前耗时", placeholder: "如：2秒", required: false },
+                        { key: "db_type", label: "数据库类型", placeholder: "如：MySQL/PostgreSQL", required: false },
+                        { key: "tool_name", label: "工具名称", placeholder: "如：my-cli", required: false },
+                        { key: "params", label: "参数列表", placeholder: "如：--input --output --verbose", required: false },
+                        { key: "output_format", label: "输出格式", placeholder: "如：JSON/文本/表格", required: false }
+                    ],
+                    prompts: {
+                        "API 文档生成": "请根据以下代码生成 API 文档：\n- 代码：{{code}}\n- 文档风格：{{doc_style}}\n- 目标读者：{{reader}}\n- 编程语言：{{language}}\n\n输出格式：\n1. API 概览\n2. 接口列表\n3. 每个接口的：\n   - 请求方法 + 路径\n   - 参数说明\n   - 请求示例\n   - 响应示例\n   - 错误码说明\n4. 使用注意事项",
+                        "SQL 优化": "请优化以下 SQL 查询：\n- 原 SQL：{{code}}\n- 数据规模：{{data_scale}}\n- 当前耗时：{{time_cost}}\n- 数据库类型：{{db_type}}\n\n优化方向：\n1. 索引建议\n2. 查询重写\n3. 执行计划分析\n4. 连接优化\n5. 分页/分区建议\n\n请提供优化后的 SQL 和执行效率对比。",
+                        "命令行工具设计": "请帮我设计一个命令行工具：\n- 工具名称：{{tool_name}}\n- 核心功能：{{function_desc}}\n- 输入参数：{{params}}\n- 输出格式：{{output_format}}\n- 使用语言：{{language}}\n\n要求：\n1. 完整的 CLI 参数解析\n2. 友好的帮助信息\n3. 错误处理\n4. 进度显示\n5. 配置文件支持（可选）\n\n请提供完整的代码实现。"
+                    }
+                }
+            }
+        },
+        "分析场景": {
+            icon: "fa-bar-chart",
+            color: "purple",
+            templates: {
+                "数据分析": {
+                    color: "violet",
+                    variants: ["数据分析框架", "可视化建议", "报告摘要生成", "异常检测"],
+                    fields: [
+                        { key: "data_description", label: "数据描述", placeholder: "描述数据来源和字段说明", required: true },
+                        { key: "goal", label: "分析目标", placeholder: "要回答的问题", required: true },
+                        { key: "dimensions", label: "分析维度", placeholder: "如：时间/分类/对比", required: false },
+                        { key: "data_type", label: "数据特点", placeholder: "如：时间序列/分类数据", required: false },
+                        { key: "presentation_goal", label: "呈现目标", placeholder: "如：强调趋势/对比/分布", required: false },
+                        { key: "audience", label: "受众背景", placeholder: "如：管理层/技术团队", required: false },
+                        { key: "key_metrics", label: "关键指标", placeholder: "如：DAU、转化率、留存率", required: false },
+                        { key: "report_length", label: "篇幅要求", placeholder: "如：100-300字", required: false },
+                        { key: "baseline", label: "正常范围/基准值", placeholder: "如：平均耗时200ms", required: false },
+                        { key: "anomaly", label: "异常数据", placeholder: "如：某天耗时飙升到2s", required: false },
+                        { key: "time_window", label: "时间窗口", placeholder: "如：过去7天", required: false }
+                    ],
+                    prompts: {
+                        "数据分析框架": "请帮我分析以下数据：\n- 数据描述：{{data_description}}\n- 分析目标：{{goal}}\n- 分析维度：{{dimensions}}\n\n输出格式：\n1. 数据概览\n2. 关键发现\n3. 趋势解读\n4. 建议措施",
+                        "可视化建议": "请推荐可视化方式：\n- 数据特点：{{data_type}}\n- 呈现目标：{{presentation_goal}}\n- 受众：{{audience}}\n\n请说明：\n1. 推荐图表类型\n2. 为什么适合\n3. 配色建议",
+                        "报告摘要生成": "请为以下数据生成摘要：\n- 原始数据：{{data_description}}\n- 重点：{{key_metrics}}\n- 篇幅：{{report_length}}\n\n要求：\n1. 突出关键发现\n2. 用一句话概括核心结论\n3. 提供数据支撑",
+                        "异常检测": "请分析以下异常数据：\n- 正常范围：{{baseline}}\n- 异常数据：{{anomaly}}\n- 时间窗口：{{time_window}}\n- 数据描述：{{data_description}}\n\n分析：\n1. 异常程度评估\n2. 可能原因\n3. 是否需要告警"
+                    }
+                },
+                "市场研究": {
+                    color: "fuchsia",
+                    variants: ["竞品分析框架", "行业趋势分析", "用户调研框架"],
+                    fields: [
+                        { key: "field", label: "目标领域/行业", placeholder: "如：AI 写作工具市场", required: true },
+                        { key: "competitors", label: "主要竞品", placeholder: "如：竞品A、竞品B、竞品C", required: false },
+                        { key: "dimensions", label: "分析维度", placeholder: "如：功能/定价/用户体验/市场份额", required: false },
+                        { key: "time_range", label: "时间范围", placeholder: "如：过去3年", required: false },
+                        { key: "focus", label: "关注重点", placeholder: "如：技术/政策/消费/竞争", required: false },
+                        { key: "product", label: "产品/服务描述", placeholder: "描述你的产品或服务", required: true },
+                        { key: "target_users", label: "目标用户画像", placeholder: "如：SaaS企业的CTO", required: false },
+                        { key: "research_goal", label: "调研目标", placeholder: "如：验证假设/发现痛点/测量满意度", required: false }
+                    ],
+                    prompts: {
+                        "竞品分析框架": "请帮我进行竞品分析：\n- 目标领域：{{field}}\n- 主要竞品：{{competitors}}\n- 分析维度：{{dimensions}}\n\n输出格式：\n1. 竞品概览表（名称、定位、核心功能、价格）\n2. 优劣势对比矩阵\n3. 市场定位图\n4. 差异化机会",
+                        "行业趋势分析": "请分析以下行业趋势：\n- 行业名称：{{field}}\n- 时间范围：{{time_range}}\n- 关注重点：{{focus}}\n\n分析要求：\n1. 识别3-5个关键趋势\n2. 每个趋势的驱动力\n3. 对行业格局的影响\n4. 未来展望（1-3年）",
+                        "用户调研框架": "请帮我设计用户调研方案：\n- 产品/服务：{{product}}\n- 目标用户：{{target_users}}\n- 调研目标：{{research_goal}}\n- 领域：{{field}}\n\n输出：\n1. 调研问题清单（10-15个问题）\n2. 调研方式建议（问卷/访谈/可用性测试）\n3. 数据分析方法\n4. 输出报告模板"
+                    }
+                }
+            }
+        },
+        "角色扮演": {
+            icon: "fa-users",
+            color: "red",
+            templates: {
+                "角色模板": {
+                    color: "rose",
+                    variants: ["面试模拟", "技术顾问", "代码审查", "产品讨论"],
+                    fields: [
+                        { key: "position", label: "岗位/角色", placeholder: "如：前端工程师", required: true },
+                        { key: "level", label: "级别", placeholder: "如：初级/中级/高级", required: false },
+                        { key: "tech_stack", label: "技术栈/领域", placeholder: "如：React/Node.js/AI", required: false },
+                        { key: "round", label: "面试轮次/场景类型", placeholder: "如：技术面/系统设计/行为面", required: false },
+                        { key: "role_name", label: "我的角色", placeholder: "如：产品经理/开发者/创业者", required: false },
+                        { key: "project_bg", label: "项目背景", placeholder: "简要描述项目背景", required: false },
+                        { key: "problem", label: "当前问题", placeholder: "具体问题描述", required: true },
+                        { key: "code", label: "审查代码", placeholder: "粘贴需要审查的代码", required: false },
+                        { key: "review_focus", label: "审查重点", placeholder: "如：安全性/性能/可维护性", required: false },
+                        { key: "product_concept", label: "产品概念", placeholder: "简要描述产品", required: false },
+                        { key: "target_users", label: "目标用户", placeholder: "用户画像", required: false },
+                        { key: "core_features", label: "核心功能", placeholder: "功能列表", required: false }
+                    ],
+                    prompts: {
+                        "面试模拟": "你扮演一名{{position}}面试官，对我进行面试：\n- 岗位：{{position}}\n- 级别：{{level}}\n- 技术栈：{{tech_stack}}\n- 面试轮次：{{round}}\n- 我的问题：{{problem}}\n\n面试要求：\n1. 先提问，等我回答后再给反馈\n2. 回答后指出改进方向\n3. 最后给出综合评分",
+                        "技术顾问": "你扮演一名{{tech_stack}}资深技术顾问：\n- 我的角色：{{role_name}}\n- 项目背景：{{project_bg}}\n- 当前问题：{{problem}}\n\n顾问要求：\n1. 分析问题本质\n2. 提供2-3个可选方案\n3. 说明各方案的优缺点\n4. 给出推荐方案",
+                        "代码审查": "你扮演一名严苛的代码审查者：\n- 审查代码：{{code}}\n- 语言：{{tech_stack}}\n- 审查重点：{{review_focus}}\n\n审查要求：\n1. 标记所有问题代码行\n2. 按严重级别分类\n3. 给出修复建议",
+                        "产品讨论": "你扮演一名{{tech_stack}}产品经理：\n- 产品概念：{{product_concept}}\n- 目标用户：{{target_users}}\n- 核心功能：{{core_features}}\n- 当前问题：{{problem}}\n\n讨论目标：\n1. 评估产品可行性\n2. 优先级排序\n3. 潜在风险\n4. 下一步建议"
+                    }
+                },
+                "辩论讨论": {
+                    color: "amber",
+                    variants: ["结构化辩论", "苏格拉底式对话", "跨领域专家会议"],
+                    fields: [
+                        { key: "topic", label: "辩题/讨论主题", placeholder: "如：AI是否会取代人类工作", required: true },
+                        { key: "my_stance", label: "我的立场/初始观点", placeholder: "如：正方/反方", required: false },
+                        { key: "opponent_stance", label: "对方立场", placeholder: "如：反方/正方", required: false },
+                        { key: "goal_depth", label: "讨论目的", placeholder: "如：澄清概念/检验逻辑/探索深度", required: false },
+                        { key: "experts", label: "专家阵容", placeholder: "如：经济学家、AI研究员", required: false },
+                        { key: "meeting_goal", label: "会议目标", placeholder: "如：形成策略建议", required: false }
+                    ],
+                    prompts: {
+                        "结构化辩论": "我们来进行一场结构化辩论：\n- 辩题：{{topic}}\n- 我的立场：{{my_stance}}\n- 对方立场：{{opponent_stance}}\n\n规则：\n1. 每次发言不超过200字\n2. 必须引用论据\n3. 可以指出对方逻辑漏洞\n4. 最后总结各方最佳论点",
+                        "苏格拉底式对话": "请使用苏格拉底式提问法帮我思考：\n- 主题：{{topic}}\n- 我的初始观点：{{my_stance}}\n- 我想达到的目的：{{goal_depth}}\n\n提问方式：\n1. 先问我关于这个主题的理解\n2. 针对我的回答提出追问\n3. 指出我思考中的盲点\n4. 帮助我形成更清晰的认知",
+                        "跨领域专家会议": "请模拟一场跨领域专家会议：\n- 讨论主题：{{topic}}\n- 专家阵容：{{experts}}\n- 会议目标：{{meeting_goal}}\n\n会议流程：\n1. 每位专家从自己领域发表看法\n2. 自由讨论环节（交叉意见）\n3. 共识点总结\n4. 分歧点记录"
+                    }
+                }
+            }
+        }
+    };
+
+    // ============================
+    // 示例值库（用于随机填充）
+    // ============================
+    const sampleValues = {
+        theme: ["AI对内容创作的影响", "35岁职场危机", "副业赚钱指南", "极简生活方式", "个人IP打造"],
+        audience: ["内容创作者", "25-35岁职场人", "自由职业者", "创业者", "技术从业者"],
+        article_type: ["教程", "观点分析", "案例研究", "经验分享"],
+        length: ["2000-3000字", "1500字左右", "5000字深度文", "800-1000字短文"],
+        key_points: ["AI是工具而非替代者", "长期主义胜过短期投机", "系统思维比单点突破更重要"],
+        intro_style: ["故事引入", "数据引入", "提问引入", "场景引入"],
+        field: ["AI写作工具", "职场成长", "科技资讯", "个人品牌", "在线教育"],
+        focus: ["AI工具测评", "效率提升方法论", "行业趋势分析", "技能学习路径"],
+        platform: ["公众号", "小红书", "抖音", "知乎", "B站"],
+        frequency: ["每日更新", "每周3次", "每周1次深度文"],
+        hot_topic: ["ChatGPT新功能", "远程办公趋势", "AI绘画发展"],
+        source_text: ["Artificial intelligence is transforming the way we work and live. From automated customer service to predictive analytics, AI technologies are becoming increasingly integrated into our daily routines."],
+        style: ["简洁专业", "生动活泼", "正式严谨", "亲和口语"],
+        optimization_direction: ["更吸引眼球", "更专业可信", "更简洁有力"],
+        target_language: ["中文", "英文", "日文"],
+        product: ["AI写作助手", "在线笔记工具", "时间管理App", "知识付费课程"],
+        selling_points: ["AI辅助写作、一键排版", "全平台同步、离线可用", "番茄钟+任务管理"],
+        channel: ["公众号", "小红书", "抖音", "邮件营销"],
+        CTA: ["立即购买", "免费试用", "关注收藏", "分享给朋友"],
+        platform2: ["小红书", "抖音", "微博", "知乎"],
+        goal: ["涨粉", "互动", "转化", "品牌曝光"],
+        brand_name: ["墨记", "FlowMind", "知享", "简创"],
+        founding_time: ["2023年", "2021年", "2019年"],
+        core_values: ["高效创新", "简单专注", "用户至上"],
+        language: ["TypeScript", "Python", "Go", "Rust", "JavaScript"],
+        task: ["实现用户登录功能", "实现数据导出为CSV", "构建RESTful API", "实现文件上传功能"],
+        constraints: ["需要包含参数校验", "要求高性能", "需考虑安全性", "兼容IE11"],
+        examples: ["输入email返回boolean", "输入userId返回用户对象"],
+        function_name: ["validateEmail", "fetchUserData", "generateReport", "processImage"],
+        params: ["email: string", "userId: number", "data: Record<string, any>"],
+        return_type: ["boolean", "Promise<User>", "void", "string[]"],
+        api_path: ["/api/users", "/api/posts", "/api/upload"],
+        api_method: ["GET", "POST", "PUT", "DELETE"],
+        auth: ["JWT", "OAuth 2.0", "API Key"],
+        code: ["function fibonacci(n) {\n  if (n <= 1) return n;\n  return fibonacci(n-1) + fibonacci(n-2);\n}", "SELECT * FROM orders WHERE status = 'pending' ORDER BY created_at DESC;"],
+        problem: ["页面加载速度慢", "API返回数据不正确", "内存泄漏", "并发请求导致崩溃"],
+        expected: ["页面应在2秒内加载完成", "API应返回200状态码", "内存使用应稳定"],
+        actual: ["页面加载需要8秒", "API返回500错误", "内存持续增长直至OOM"],
+        environment: ["Node.js 18", "Chrome 120", "iOS 17", "Ubuntu 22.04"],
+        log: ["Error: Cannot read property 'data' of undefined\n    at Object.fetchUser (app.js:42:15)\n    at async getUser (app.js:85:3)"],
+        time_cost: ["500ms", "2秒", "约3分钟"],
+        data_scale: ["10万行数据", "2GB文件", "100万用户"],
+        test_framework: ["Jest", "Vitest", "Mocha", "Playwright"],
+        coverage: ["正常+异常", "边界+异常", "全部覆盖"],
+        goal_refactor: ["可读性提升", "性能优化", "可维护性增强"],
+        core_issue: ["代码重复严重", "函数过长", "缺乏类型安全", "耦合度高"],
+        function_desc: ["处理用户注册流程", "生成月度销售报表", "管理项目任务分配"],
+        system_goal: ["构建高并发电商系统", "设计微服务架构", "搭建数据中台"],
+        modules: ["用户模块、订单模块、支付模块", "内容管理、用户管理、数据分析"],
+        data_flow: ["用户请求→API网关→微服务→数据库", "前端→后端→消息队列→数据处理→存储"],
+        tech_stack: ["React + Node.js + PostgreSQL", "Vue + Go + MongoDB", "Angular + Java + MySQL"],
+        doc_style: ["详细标准", "简洁概要", "完整规范"],
+        reader: ["前端开发者", "第三方开发者", "运维人员"],
+        db_type: ["MySQL", "PostgreSQL", "MongoDB", "Redis"],
+        tool_name: ["my-cli", "data-pipeline", "config-mgr"],
+        output_format: ["JSON", "文本表格", "CSV"],
+        data_description: ["某电商平台2024年Q1销售数据，包含每日订单量、客单价、品类分布"],
+        goal_analysis: ["分析销售趋势并预测Q2业绩", "找出用户流失原因", "评估营销活动效果"],
+        dimensions: ["时间趋势", "品类对比", "用户分层", "区域分布"],
+        data_type: ["时间序列数据", "分类数据", "多维度表格数据"],
+        presentation_goal: ["强调上升趋势", "对比各品类表现", "展示分布情况"],
+        audience_analysis: ["管理层", "技术团队", "产品团队", "客户"],
+        key_metrics: ["DAU、转化率、留存率", "GMV、客单价、复购率", "响应时间、吞吐量、错误率"],
+        report_length: ["100-200字", "200-500字", "一页PPT摘要"],
+        baseline: ["平均响应时间200ms", "日活用户5万", "转化率3%"],
+        anomaly: ["某天响应时间飙升到2秒", "某渠道转化率骤降至0.5%"],
+        time_window: ["过去7天", "过去30天", "同比去年同期"],
+        competitors: ["竞品A、竞品B、竞品C", "Notion、Obsidian、Roam"],
+        time_range: ["过去3年", "近5年", "2020-2024"],
+        research_focus: ["技术趋势", "政策变化", "消费行为", "竞争格局"],
+        product_desc: ["AI驱动的个人知识管理工具", "企业级低代码开发平台"],
+        target_users: ["SaaS企业CTO", "独立开发者", "知识工作者"],
+        research_goal: ["验证市场假设", "发现用户痛点", "测量满意度"],
+        position: ["前端工程师", "后端工程师", "产品经理", "数据分析师"],
+        level: ["初级", "中级", "高级", "专家"],
+        round: ["技术面", "系统设计", "行为面"],
+        role_name: ["产品经理", "开发者", "创业者", "设计师"],
+        project_bg: ["正在开发一个AI写作助手", "计划从0到1搭建电商平台"],
+        problem_desc: ["如何设计可扩展的系统架构", "怎样提高用户留存率"],
+        review_focus: ["安全性", "性能", "可维护性", "代码风格"],
+        product_concept: ["AI驱动的个人知识库", "社交化学习平台"],
+        core_features: ["笔记同步、AI问答、知识图谱", "课程管理、社区互动、数据分析"],
+        topic: ["AI是否会取代人类工作", "996工作制是否合理", "该不该让小孩用手机"],
+        my_stance: ["正方", "反方", "中立但有倾向"],
+        opponent_stance: ["反方", "正方", "中立但有倾向"],
+        goal_depth: ["澄清概念", "检验逻辑", "探索深度认知"],
+        experts: ["经济学家、AI研究员、社会学家", "创业者、投资人、技术专家"],
+        meeting_goal: ["形成策略建议", "输出可行方案", "识别关键风险"]
+    };
+
+    // ============================
+    // 状态
+    // ============================
+    let state = {
+        category: null,
+        template: null,
+        variant: null
+    };
+
+    // ============================
+    // UI 渲染函数
+    // ============================
+
+    // 渲染分类按钮
+    function renderCategories() {
+        const container = document.getElementById("categories");
+        container.innerHTML = "";
+        Object.keys(data).forEach(cat => {
+            const info = data[cat];
+            const isActive = state.category === cat;
+            const btn = document.createElement("button");
+            btn.className = `px-4 py-2 rounded-lg border text-sm font-medium transition flex items-center gap-1.5 ${
+                isActive
+                    ? "bg-blue-500 text-white border-blue-500 shadow"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600"
+            }`;
+            btn.innerHTML = `<i class="fa ${info.icon}"></i> ${cat}`;
+            btn.onclick = () => selectCategory(cat);
+            container.appendChild(btn);
+        });
+    }
+
+    // 渲染模板按钮
+    function renderTemplates() {
+        const container = document.getElementById("templates");
+        container.innerHTML = "";
+        if (!state.category) {
+            container.innerHTML = '<p class="text-gray-400 text-sm">请先选择场景分类</p>';
+            return;
+        }
+        const catData = data[state.category].templates;
+        Object.keys(catData).forEach(tpl => {
+            const info = catData[tpl];
+            const isActive = state.template === tpl;
+            const btn = document.createElement("button");
+            btn.className = `px-4 py-2 rounded-lg border text-sm font-medium transition ${
+                isActive
+                    ? "bg-green-500 text-white border-green-500 shadow"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-green-300 hover:text-green-600"
+            }`;
+            btn.textContent = tpl;
+            btn.onclick = () => selectTemplate(tpl);
+            container.appendChild(btn);
+        });
+    }
+
+    // 渲染变体（子模板）按钮
+    function renderVariants() {
+        const container = document.getElementById("variants");
+        const section = document.getElementById("variantSection");
+        container.innerHTML = "";
+        if (!state.category || !state.template) {
+            section.style.display = "none";
+            return;
+        }
+        const tplData = data[state.category].templates[state.template];
+        if (!tplData.variants || tplData.variants.length <= 1) {
+            section.style.display = "none";
+            if (tplData.variants && tplData.variants.length === 1) {
+                state.variant = tplData.variants[0];
+            }
+            return;
+        }
+        section.style.display = "block";
+        tplData.variants.forEach(v => {
+            const isActive = state.variant === v;
+            const btn = document.createElement("button");
+            btn.className = `px-3 py-1.5 rounded-lg border text-xs font-medium transition ${
+                isActive
+                    ? "bg-yellow-500 text-white border-yellow-500 shadow"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-yellow-300 hover:text-yellow-600"
+            }`;
+            btn.textContent = v;
+            btn.onclick = () => selectVariant(v);
+            container.appendChild(btn);
+        });
+        // Auto-select first variant if none selected
+        if (!state.variant || !tplData.variants.includes(state.variant)) {
+            selectVariant(tplData.variants[0]);
+        }
+    }
+
+    // 渲染输入字段
+    function renderFields() {
+        const section = document.getElementById("fieldsSection");
+        const container = document.getElementById("fields");
+        container.innerHTML = "";
+
+        if (!state.category || !state.template) {
+            section.style.display = "none";
+            return;
+        }
+
+        const tplData = data[state.category].templates[state.template];
+        section.style.display = "block";
+
+        tplData.fields.forEach(f => {
+            const div = document.createElement("div");
+            const label = document.createElement("label");
+            label.className = "block text-xs font-medium text-gray-600 mb-1";
+            label.textContent = f.label + (f.required ? " *" : "");
+            if (f.required) {
+                label.innerHTML += ' <span class="text-red-500">*</span>';
+            }
+
+            const input = document.createElement("input");
+            input.type = "text";
+            input.id = "field_" + f.key;
+            input.className = "w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-300 outline-none";
+            input.placeholder = f.placeholder || "";
+
+            div.appendChild(label);
+            div.appendChild(input);
+            container.appendChild(div);
+        });
+    }
+
+    // ============================
+    // 选择处理
+    // ============================
+    function selectCategory(cat) {
+        if (state.category === cat) {
+            state.category = null;
+            state.template = null;
+            state.variant = null;
+        } else {
+            state.category = cat;
+            state.template = null;
+            state.variant = null;
+        }
+        renderCategories();
+        renderTemplates();
+        renderVariants();
+        renderFields();
+        updateStatus();
+    }
+
+    function selectTemplate(tpl) {
+        if (state.template === tpl) {
+            state.template = null;
+            state.variant = null;
+        } else {
+            state.template = tpl;
+            state.variant = null;
+        }
+        renderTemplates();
+        renderVariants();
+        renderFields();
+        updateStatus();
+    }
+
+    function selectVariant(v) {
+        state.variant = v;
+        renderVariants();
+        updateStatus();
+    }
+
+    // ============================
+    // 生成提示词
+    // ============================
+    function generate() {
+        if (!state.category || !state.template || !state.variant) {
+            document.getElementById("output").textContent = "请先选择分类、模板和具体场景";
+            return;
+        }
+
+        const tplData = data[state.category].templates[state.template];
+        const promptTpl = tplData.prompts[state.variant];
+        if (!promptTpl) {
+            document.getElementById("output").textContent = "该场景暂未配置提示词模板";
+            return;
+        }
+
+        let result = promptTpl;
+        let missingFields = [];
+
+        tplData.fields.forEach(f => {
+            const input = document.getElementById("field_" + f.key);
+            const val = input ? input.value.trim() : "";
+            const placeholder = "{{" + f.key + "}}";
+
+            if (val) {
+                result = result.replace(new RegExp(escapeRegExp(placeholder), "g"), val);
+            } else {
+                result = result.replace(new RegExp(escapeRegExp(placeholder), "g"), "（请填写" + f.label + "）");
+                if (f.required) {
+                    missingFields.push(f.label);
+                }
+            }
+        });
+
+        // 清理未匹配的占位符
+        result = result.replace(/\{\{.+?\}\}/g, "（请补充相关信息）");
+
+        // 添加元信息
+        const meta = `# ${state.category} / ${state.template} / ${state.variant}\n# 使用说明：将以下内容复制发送给 Claude\n\n`;
+        result = meta + result;
+
+        if (missingFields.length > 0) {
+            result += `\n\n⚠️ 提示：以下必填字段未填写：${missingFields.join("、")}，建议补充完整以获得更精准的结果。`;
+        }
+
+        const output = document.getElementById("output");
+        output.textContent = result;
+        updateStatus("已生成，点击复制使用");
+    }
+
+    // ============================
+    // 复制 & 清空
+    // ============================
+    function copyPrompt() {
+        const text = document.getElementById("output").textContent;
+        if (!text || text === "等待生成...") return;
+        navigator.clipboard.writeText(text).then(() => {
+            const btn = document.getElementById("copyBtn");
+            const orig = btn.innerHTML;
+            btn.innerHTML = '<i class="fa fa-check"></i> 已复制';
+            setTimeout(() => { btn.innerHTML = orig; }, 2000);
+        }).catch(() => {
+            alert("复制失败，请手动选择文本复制");
+        });
+    }
+
+    function clearPrompt() {
+        document.getElementById("output").textContent = "等待生成...";
+        updateStatus();
+    }
+
+    // ============================
+    // 随机模板
+    // ============================
+    function randomTemplate() {
+        const cats = Object.keys(data);
+        const cat = cats[Math.floor(Math.random() * cats.length)];
+        const tpls = Object.keys(data[cat].templates);
+        const tpl = tpls[Math.floor(Math.random() * tpls.length)];
+        const tplData = data[cat].templates[tpl];
+        const variants = tplData.variants;
+        const variant = variants[Math.floor(Math.random() * variants.length)];
+
+        state.category = cat;
+        state.template = tpl;
+        state.variant = variant;
+
+        renderCategories();
+        renderTemplates();
+        renderVariants();
+
+        // 填充示例值
+        tplData.fields.forEach(f => {
+            const input = document.getElementById("field_" + f.key);
+            if (input) {
+                const pool = sampleValues[f.key];
+                if (pool && Array.isArray(pool)) {
+                    input.value = pool[Math.floor(Math.random() * pool.length)];
+                } else if (pool) {
+                    input.value = pool;
+                } else {
+                    input.value = "示例" + f.label;
+                }
+            }
+        });
+
+        renderFields();
+        updateStatus("已随机选择： " + cat + " / " + tpl + " / " + variant);
+        generate();
+    }
+
+    // ============================
+    // 工具函数
+    // ============================
+    function escapeRegExp(str) {
+        return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    function updateStatus(msg) {
+        const el = document.getElementById("status");
+        el.textContent = msg || "";
+    }
+
+    // ============================
+    // 收藏模板功能（localStorage持久化）
+    // ============================
+    var FAV_KEY = 'prompt_builder_favorites';
+
+    function getFavorites() {
+        try { return JSON.parse(localStorage.getItem(FAV_KEY)) || []; } catch(e) { return []; }
+    }
+
+    function saveFavoritesFn(favs) {
+        localStorage.setItem(FAV_KEY, JSON.stringify(favs));
+    }
+
+    function saveCurrentToFavorites() {
+        var cat = state.category;
+        var tpl = state.template;
+        var variant = state.variant;
+        var output = document.getElementById('output').textContent;
+        if (!cat || !tpl || !variant || output === '等待生成...') {
+            alert('请先生成提示词再收藏');
+            return;
+        }
+
+        var favs = getFavorites();
+        var existing = favs.findIndex(function(f) { return f.category === cat && f.template === tpl && f.variant === variant; });
+        if (existing >= 0) {
+            if (!confirm('该配置已收藏，是否更新？')) return;
+            favs[existing] = { category: cat, template: tpl, variant: variant, prompt: output, savedAt: new Date().toLocaleString() };
+        } else {
+            favs.unshift({ category: cat, template: tpl, variant: variant, prompt: output, savedAt: new Date().toLocaleString() });
+        }
+        if (favs.length > 30) favs.pop();
+        saveFavoritesFn(favs);
+        renderFavorites();
+        alert('已收藏');
+    }
+
+    function loadFavorite(fav) {
+        state.category = fav.category;
+        state.template = fav.template;
+        state.variant = fav.variant;
+        renderCategories();
+        renderTemplates();
+        renderVariants();
+        renderFields();
+
+        if (fav.prompt) {
+            document.getElementById('output').textContent = fav.prompt;
+            updateStatus('已加载收藏模板');
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function removeFavorite(index) {
+        var favs = getFavorites();
+        favs.splice(index, 1);
+        saveFavoritesFn(favs);
+        renderFavorites();
+    }
+
+    function clearAllFavorites() {
+        if (!confirm('确定清空所有收藏吗？')) return;
+        saveFavoritesFn([]);
+        renderFavorites();
+    }
+
+    function renderFavorites() {
+        var container = document.getElementById('favoritesList');
+        var favs = getFavorites();
+        window.favs = favs;
+        if (favs.length === 0) {
+            container.innerHTML = '<div class="text-gray-400 text-sm text-center py-2">暂无收藏，生成后点击收藏保存常用模板</div>';
+            return;
+        }
+        container.innerHTML = favs.map(function(f, i) {
+            return '<div class="flex items-center justify-between p-3 bg-gray-50 rounded hover:bg-gray-100 border">' +
+                '<div class="flex-1 min-w-0 cursor-pointer" onclick="loadFavorite(window.favs[' + i + '])">' +
+                    '<div class="text-sm font-medium text-gray-700 truncate">' + f.category + ' / ' + f.template + ' / ' + f.variant + '</div>' +
+                    '<div class="text-xs text-gray-400">' + f.savedAt + '</div>' +
+                '</div>' +
+                '<div class="flex gap-2 ml-2">' +
+                    '<button onclick="loadFavorite(window.favs[' + i + '])" class="text-blue-500 hover:text-blue-700 text-sm px-2" title="加载"><i class="fa fa-upload"></i></button>' +
+                    '<button onclick="removeFavorite(' + i + ')" class="text-red-400 hover:text-red-600 text-sm px-2" title="删除"><i class="fa fa-times"></i></button>' +
+                '</div>' +
+            '</div>';
+        }).join('');
+    }
+
+    // ============================
+    // 初始化
+    // ============================
+    renderCategories();
+    renderTemplates();
+    renderVariants();
+    renderFields();
+    renderFavorites();
+    </script>
+</body>
+</html>
