@@ -1,17 +1,17 @@
-# Claude Prompt 模板库
+# Claude Prompt模板库
 
-[![HTML](https://img.shields.io/badge/HTML-standalone-orange)]()
-[![Claude](https://img.shields.io/badge/Claude-AI-compatible-blue)]()
+写Prompt总从头开始？
+**模板库帮你快速构建高质量Prompt。**
 
-Claude 提示词模板管理与构建工具。
+[![HTML](https://img.shields.io/badge/打开即用-无需安装-orange)]()
 
-## 功能
+## Prompt不再"乱写"
 
-- **模板库**：多种场景的 prompt 模板
-- **收藏管理**：localStorage 收藏常用模板
+- **模板库**：多场景Prompt模板
+- **收藏管理**：localStorage收藏常用模板
 - **快速加载**：一键加载已收藏模板
-- **搜索筛选**：按分类/关键词快速定位
+- **搜索筛选**：按分类/关键词定位
 
-## 使用
+## 怎么用
 
-打开 prompt_builder.html 即可使用。
+打开 `prompt_builder.html` → 选择/搜索模板 → 复制使用
